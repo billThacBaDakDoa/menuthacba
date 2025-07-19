@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tính Tiền | Thác Ba Coffee</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#795548" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Tính Tiền" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+      background: linear-gradient(to right, #e9b15e, #fff3e0);
+    }
+    h1 {
+      text-align: center;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    button {
+      padding: 6px 12px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #total {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    #choseChoi {
+      margin-bottom: 15px;
+    }
+    .history-btn {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    #qrCode {
+      text-align: center;
+      margin-top: 10px;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 16px;
+        padding: 10px;
+      }
+      button {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>TÍNH TIỀN</h1>
+
+  <select id="choseChoi">
+    <option disabled selected>Chọn Chòi</option>
+    <option>Chòi 1</option>
+    <option>Chòi 2</option>
+    <option>Chòi 3</option>
+    <option>Chòi 4</option>
+    <option>Chòi 5</option>
+  </select>
+
+  <div id="menu"></div>
+  <div id="total">Tổng cộng: 0 đ</div>
+
+  <div class="history-btn">
+    <button onclick="printBill()">In Bill</button>
+    <button onclick="clearBill()">Xoá Bill</button>
+  </div>
+
+  <div id="qrCode"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // Danh sách sản phẩm
+    const menuItems = [
+      { name: "Cà phê sữa", price: 20000, quantity: 0 },
+      { name: "Trà gừng", price: 15000, quantity: 0 },
+      { name: "Bánh mì", price: 10000, quantity: 0 },
+      { name: "Sinh tố xoài", price: 25000, quantity: 0 },
+    ];
+
+    function renderMenu() {
+      const menu = document.getElementById("menu");
+      menu.innerHTML = "";
+      menuItems.forEach((item, i) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <span>${item.name}</span>
+          <div class="controls">
+            <button onclick="updateQty(${i}, -1)">-</button>
+            <span id="qty-${i}">${item.quantity}</span>
+            <button onclick="updateQty(${i}, 1)">+</button>
+          </div>
+        `;
+        menu.appendChild(div);
+      });
+      updateTotal();
+    }
+
+    function updateQty(index, change) {
+      menuItems[index].quantity = Math.max(0, menuItems[index].quantity + change);
+      document.getElementById(`qty-${index}`).textContent = menuItems[index].quantity;
+      updateTotal();
+    }
+
+    function updateTotal() {
+      const total = menuItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      document.getElementById("total").textContent = "Tổng cộng: " + total.toLocaleString() + " đ";
+    }
+
+    // Firebase cấu hình
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhrHFNGXq8jgtfUXW73r1HoFJpdt5GaJU",
+      authDomain: "billthacba.firebaseapp.com",
+      projectId: "billthacba"
+    };
+
+    // Khởi tạo Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function printBill() {
+      const chòi = document.getElementById("choseChoi").value || "Chưa chọn Chòi";
+      const timestamp = new Date();
+      let total = 0;
+      const order = {};
+
+      menuItems.forEach(item => {
+        if (item.quantity > 0) {
+          total += item.price * item.quantity;
+          order[item.name] = item.quantity;
+        }
+      });
+
+      const docRef = await db.collection("bills").add({
+        table: chòi,
+        timestamp,
+        order,
+        total
+      });
+
+      const billURL = `https://billthacbadakdoa.github.io/test123/bill.html?id=${docRef.id}`;
+      const qrDiv = document.getElementById("qrCode");
+      qrDiv.innerHTML = `
+        <p>Quét mã để xem hóa đơn:</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(billURL)}" alt="QR bill">
+        <br><a href="${billURL}" target="_blank">Xem hóa đơn tại đây</a>
+      `;
+
+      window.print();
+    }
+
+    function clearBill() {
+      menuItems.forEach(item => item.quantity = 0);
+      renderMenu();
+      document.getElementById("qrCode").innerHTML = "";
+    }
+
+    renderMenu();
+  </script>
+</body>
+</html>

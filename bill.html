@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chi tiết Hóa đơn | Thác Ba Coffee</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background: #fffaf3;
+      color: #333;
+    }
+    h2 {
+      text-align: center;
+      color: #4e342e;
+    }
+    p {
+      font-size: 16px;
+      margin: 6px 0;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+    li {
+      padding: 6px;
+      border-bottom: 1px solid #ccc;
+      font-size: 16px;
+    }
+    .total {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 12px;
+      text-align: right;
+    }
+    #billDetails {
+      background: #fff;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .not-found {
+      color: red;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>HÓA ĐƠN THANH TOÁN</h2>
+  <div id="billDetails">Đang tải hóa đơn...</div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhrHFNGXq8jgtfUXW73r1HoFJpdt5GaJU",
+      authDomain: "billthacba.firebaseapp.com",
+      projectId: "billthacba"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Lấy ID hóa đơn từ URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const billId = urlParams.get("id");
+
+    async function loadBill() {
+      const output = document.getElementById("billDetails");
+      try {
+        const docRef = db.collection("bills").doc(billId);
+        const docSnap = await docRef.get();
+
+        if (docSnap.exists) {
+          const bill = docSnap.data();
+          output.innerHTML = `
+            <p><strong>Chòi:</strong> ${bill.table}</p>
+            <p><strong>Thời gian:</strong> ${new Date(bill.timestamp?.seconds * 1000).toLocaleString()}</p>
+            <ul>
+              ${Object.entries(bill.order).map(([k, v]) => `<li>${k}: ${v}</li>`).join("")}
+            </ul>
+            <div class="total">Tổng cộng: ${bill.total.toLocaleString()} đ</div>
+          `;
+        } else {
+          output.innerHTML = "<div class='not-found'>Không tìm thấy hóa đơn!</div>";
+        }
+      } catch (err) {
+        output.innerHTML = "<div class='not-found'>Lỗi tải hóa đơn!</div>";
+        console.error(err);
+      }
+    }
+
+    loadBill();
+  </script>
+</body>
+</html>
